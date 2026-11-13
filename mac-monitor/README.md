@@ -11,10 +11,13 @@ mac-monitor/
 │   └── package.json
 ├── frontend/
 │   ├── package.json
+│   ├── .env.example
 │   ├── src/
-│   │   ├── app/page.tsx
+│   │   ├── app/{layout,page}.tsx, globals.css
 │   │   ├── components/ui/{card,progress,table,badge}.tsx
-│   │   └── lib/utils.ts
+│   │   ├── components/sparkline.tsx
+│   │   ├── hooks/useStats.ts
+│   │   └── lib/{types,utils}.ts
 └── README.md
 ```
 
@@ -41,12 +44,14 @@ npm run dev
 Open `http://localhost:3000` to see the dashboard.
 
 ## Notes
-- CPU/Memory/Disk cards update every second via WebSocket.
+- CPU/Memory/Disk/Network cards update every second via Socket.io; one shared sampling loop serves all clients and pauses when nobody is connected.
+- On macOS the Disk card reports the APFS Data volume (`/System/Volumes/Data`), falling back to `/`.
 - Processes table shows the Top 5 by CPU usage.
 - A red badge indicates high CPU usage (>= 80%).
 
 ## Environment
-- To customize backend URL, edit `src/app/page.tsx` and replace `http://localhost:4000`.
+- Frontend: set `NEXT_PUBLIC_BACKEND_URL` in `frontend/.env.local` (see `.env.example`). Default `http://localhost:4000`.
+- Backend: `PORT` (4000), `INTERVAL_MS` (1000), `CORS_ORIGIN` (`*`).
 
 ## Troubleshooting
 - If the frontend shows no data, ensure the backend is running and reachable.

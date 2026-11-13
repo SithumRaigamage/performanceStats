@@ -16,12 +16,12 @@
 
 ## ✨ Features
 
-- ⚡ **Real-time Metrics** — Live CPU usage, memory pressure, disk I/O
+- ⚡ **Real-time Metrics** — Live CPU, memory and disk usage
 - 🌐 **Network Monitor** — Upload/download speed tracking
-- 📈 **Historical Charts** — Time-series graphs for all metrics
-- 🖥️ **macOS Native** — Uses native system APIs via Node.js backend
+- 📈 **History** — Rolling 60-second CPU and memory charts
+- 🧮 **Top Processes** — Top 5 processes by CPU, with a red badge above 80%
 - 🌙 **Dark Dashboard** — Sleek dark UI optimized for extended monitoring sessions
-- 🔄 **WebSocket Updates** — Push-based data streaming for instant readings
+- 🔄 **WebSocket Updates** — Push-based streaming via Socket.io
 
 ---
 
@@ -31,13 +31,16 @@
 performanceStats/
 ├── roadmap.md
 └── mac-monitor/
-    ├── backend/            # Node.js metrics server
-    │   ├── server.js       # Express + WebSocket server
+    ├── backend/                # Node.js metrics server
+    │   ├── server.js           # Express + Socket.io + systeminformation
     │   └── package.json
-    └── frontend/           # Next.js dashboard
+    └── frontend/               # Next.js dashboard
+        ├── package.json
         └── src/
-            └── app/
-                └── globals.css
+            ├── app/            # layout.tsx, page.tsx, globals.css
+            ├── components/     # ui/{card,progress,table,badge}.tsx, sparkline.tsx
+            ├── hooks/useStats.ts
+            └── lib/            # types.ts, utils.ts
 ```
 
 ---
@@ -49,10 +52,11 @@ performanceStats/
 ```bash
 cd mac-monitor/backend
 npm install
-node server.js
+npm start
 ```
 
-Backend runs at **http://localhost:3001** (WebSocket on same port)
+Backend runs at **http://localhost:4000** (Socket.io on the same port). `GET /stats` returns a JSON snapshot.
+Env vars: `PORT` (default 4000), `INTERVAL_MS` (default 1000), `CORS_ORIGIN` (default `*`).
 
 ### Frontend
 
@@ -62,7 +66,7 @@ npm install
 npm run dev
 ```
 
-Dashboard runs at **http://localhost:3000**
+Dashboard runs at **http://localhost:3000**. To point it at a different backend, copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_BACKEND_URL`.
 
 ---
 
@@ -72,9 +76,9 @@ Dashboard runs at **http://localhost:3000**
 |---|---|
 | Frontend | Next.js 15 (App Router) |
 | Backend | Node.js + Express |
-| Real-time | WebSocket (ws) |
-| Metrics | systeminformation / os module |
-| Styling | Tailwind CSS + Geist fonts |
+| Real-time | Socket.io |
+| Metrics | systeminformation |
+| Styling | Tailwind CSS v4 + Geist fonts + lucide-react |
 
 ---
 
