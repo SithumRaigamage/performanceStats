@@ -8,11 +8,16 @@ on:
 
 jobs:
   frontend:
-    name: Frontend Build
-    runs-on: ubuntu-latest
+    name: Frontend Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: mac-monitor/frontend
+        shell: bash
+        working-directory: system-monitor/frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,11 +28,16 @@ jobs:
       - run: npm run build
 
   backend:
-    name: Backend Check
-    runs-on: ubuntu-latest
+    name: Backend Check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: mac-monitor/backend
+        shell: bash
+        working-directory: system-monitor/backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,3 +45,5 @@ jobs:
           node-version: '20'
       - run: npm ci
       - run: node --check server.js
+      # Collects one real sample on this OS and fails if anything throws.
+      - run: npm run check

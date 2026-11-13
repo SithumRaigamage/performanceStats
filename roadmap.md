@@ -46,7 +46,7 @@ Data Tables: For the Top 5 Processes.
 📖 Project Documentation
 1. Project Structure
 Plaintext
-mac-monitor/
+system-monitor/
 ├── backend/
 │   ├── server.js        # Logic to fetch stats & emit via Socket.io
 │   └── package.json

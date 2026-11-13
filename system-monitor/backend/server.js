@@ -28,19 +28,59 @@ app.get('/stats', async (_req, res) => {
   }
 });
 
-// On macOS (APFS) fsSize() returns many volumes; the first one is often a
-// small system/snapshot volume. Prefer the user data volume, then root.
+const PLATFORM = process.platform; // 'darwin' | 'win32' | 'linux' | ...
+
+// Pseudo / virtual filesystems that shouldn't be reported as "the disk".
+const IGNORED_FS = /^(tmpfs|devtmpfs|overlay|squashfs|proc|sysfs|ramfs|autofs|devfs|nullfs)$/i;
+
+// Pick the volume the user thinks of as "my disk" on each OS:
+// - macOS (APFS): fsSize() lists many volumes and the first is often a small
+//   system/snapshot volume, so prefer the Data volume, then root.
+// - Windows: the system drive (usually C:).
+// - Linux: root filesystem.
+// Falls back to the largest real volume.
 function pickMainDisk(disks) {
-  const preferred = ['/System/Volumes/Data', '/'];
+  const real = disks.filter((d) => d.size > 0 && !IGNORED_FS.test(d.type || ''));
+  const candidates = real.length ? real : disks;
+
+  let preferred = [];
+  if (PLATFORM === 'darwin') preferred = ['/System/Volumes/Data', '/'];
+  else if (PLATFORM === 'win32') preferred = [(process.env.SystemDrive || 'C:').toUpperCase()];
+  else preferred = ['/'];
+
   for (const mount of preferred) {
-    const d = disks.find((x) => x.mount === mount);
+    const d = candidates.find((x) => (x.mount || '').replace(/\\$/, '').toUpperCase() === mount.toUpperCase());
     if (d) return d;
   }
-  return [...disks].sort((a, b) => b.size - a.size)[0];
+  return [...candidates].sort((a, b) => b.size - a.size)[0];
+}
+
+// Entries that aren't real processes and would dominate a "top CPU" list.
+function isRealProcess(p) {
+  if (PLATFORM === 'win32') {
+    return p.pid !== 0 && !/^(System Idle Process|Idle|_Total)$/i.test(p.name);
+  }
+  return p.pid !== 0;
+}
+
+let osInfoCache = null;
+async function getOsInfo() {
+  if (!osInfoCache) {
+    const os = await si.osInfo();
+    osInfoCache = {
+      platform: PLATFORM,
+      distro: os.distro,
+      release: os.release,
+      hostname: os.hostname,
+      arch: os.arch
+    };
+  }
+  return osInfoCache;
 }
 
 async function getStats() {
-  const [load, mem, disks, processes, net] = await Promise.all([
+  const [osInfo, load, mem, disks, processes, net] = await Promise.all([
+    getOsInfo(),
     si.currentLoad(),
     si.mem(),
     si.fsSize(),
@@ -51,21 +91,23 @@ async function getStats() {
   // systeminformation v5 uses camelCase (`currentLoad`), not `currentload`.
   const cpuPercent = Math.round(load.currentLoad ?? 0);
 
-  // `active` is the closest match to Activity Monitor's "memory used" on macOS.
+  // `active` = memory in use excluding caches/buffers. Matches Activity
+  // Monitor on macOS, "used" minus buff/cache on Linux, and equals `used` on Windows.
   const memUsed = mem.active ?? mem.used;
   const memUsedPercent = mem.total ? Math.round((memUsed / mem.total) * 100) : 0;
 
   const disk = pickMainDisk(disks) || { use: 0, size: 0, used: 0, fs: 'N/A', mount: '/' };
   const diskPercent = Math.round(disk.use ?? 0);
 
-  const topCpu = [...processes.list]
-    .sort((a, b) => b.cpu - a.cpu)
+  const topCpu = processes.list
+    .filter(isRealProcess)
+    .sort((a, b) => (b.cpu || 0) - (a.cpu || 0))
     .slice(0, 5)
     .map((p) => ({
       pid: p.pid,
       name: p.name,
-      cpu: Number(p.cpu.toFixed(1)),
-      mem: Number(p.mem.toFixed(1))
+      cpu: Number((p.cpu || 0).toFixed(1)),
+      mem: Number((p.mem || 0).toFixed(1))
     }));
 
   // rx_sec / tx_sec are null on the very first sample, so default to 0.
@@ -79,6 +121,7 @@ async function getStats() {
 
   return {
     timestamp: Date.now(),
+    os: osInfo,
     cpu: { percent: cpuPercent, cores: load.cpus?.length ?? 0 },
     mem: { percent: memUsedPercent, total: mem.total, used: memUsed },
     disk: { percent: diskPercent, fs: disk.fs, mount: disk.mount, size: disk.size, used: disk.used },
@@ -127,6 +170,18 @@ io.on('connection', (socket) => {
     if (io.engine.clientsCount === 0) stopLoop();
   });
 });
+
+// `node server.js --once` prints one sample and exits (used by CI on every OS).
+if (process.argv.includes('--once')) {
+  try {
+    const stats = await getStats();
+    console.log(JSON.stringify(stats, null, 2));
+    process.exit(0);
+  } catch (err) {
+    console.error(err);
+    process.exit(1);
+  }
+}
 
 server.listen(PORT, () => {
   console.log(`Backend listening on http://localhost:${PORT}`);

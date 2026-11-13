@@ -6,8 +6,8 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Mac Monitor',
-  description: 'Real-time macOS system performance dashboard'
+  title: 'System Monitor',
+  description: 'Real-time system performance dashboard for macOS, Windows and Linux'
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

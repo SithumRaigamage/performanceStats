@@ -1,11 +1,11 @@
-# Mac Monitor
+# System Monitor
 
-A real-time system monitor for macOS using a Node.js backend (Express + Socket.io + systeminformation) and a Next.js frontend (App Router + Tailwind + minimal shadcn-style UI components).
+A real-time system monitor for macOS, Windows and Linux using a Node.js backend (Express + Socket.io + systeminformation) and a Next.js frontend (App Router + Tailwind + minimal shadcn-style UI components).
 
 ## Project Structure
 
 ```
-mac-monitor/
+system-monitor/
 ├── backend/
 │   ├── server.js
 │   └── package.json
@@ -22,14 +22,14 @@ mac-monitor/
 ```
 
 ## Prerequisites
-- Node.js 18+
-- macOS (tested with `systeminformation` defaults)
+- Node.js 18.11+
+- macOS, Windows 10/11, or Linux
 
 ## Quick Start
 
 ### 1) Start the backend
 ```bash
-cd mac-monitor/backend
+cd system-monitor/backend
 npm install
 npm run start
 ```
@@ -45,7 +45,9 @@ Open `http://localhost:3000` to see the dashboard.
 
 ## Notes
 - CPU/Memory/Disk/Network cards update every second via Socket.io; one shared sampling loop serves all clients and pauses when nobody is connected.
-- On macOS the Disk card reports the APFS Data volume (`/System/Volumes/Data`), falling back to `/`.
+- Disk card: macOS → APFS Data volume (`/System/Volumes/Data`), Windows → system drive (`C:`), Linux → `/`; otherwise the largest real volume.
+- Windows: the idle pseudo-process is hidden from Top processes.
+- `npm run check` in `backend/` prints one sample and exits.
 - Processes table shows the Top 5 by CPU usage.
 - A red badge indicates high CPU usage (>= 80%).
 

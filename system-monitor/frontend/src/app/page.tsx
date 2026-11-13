@@ -11,6 +11,13 @@ import { formatBytes } from '@/lib/utils';
 
 const HIGH_CPU = 80;
 
+function platformLabel(platform: string) {
+  if (platform === 'darwin') return 'macOS';
+  if (platform === 'win32') return 'Windows';
+  if (platform === 'linux') return 'Linux';
+  return platform;
+}
+
 function levelClass(percent: number) {
   if (percent >= 80) return 'bg-red-500';
   if (percent >= 60) return 'bg-amber-500';
@@ -29,9 +36,13 @@ export default function Dashboard() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <Activity className="h-6 w-6 text-sky-400" /> Mac Monitor
+            <Activity className="h-6 w-6 text-sky-400" /> System Monitor
           </h1>
-          <p className="text-sm text-zinc-400">Live system stats from {backendUrl}</p>
+          <p className="text-sm text-zinc-400">
+            {stats
+              ? `${stats.os.hostname} · ${platformLabel(stats.os.platform)} (${stats.os.distro} ${stats.os.release}, ${stats.os.arch})`
+              : `Live system stats from ${backendUrl}`}
+          </p>
         </div>
         <Badge variant={status === 'connected' ? 'success' : status === 'connecting' ? 'warning' : 'destructive'}>
           {status}
