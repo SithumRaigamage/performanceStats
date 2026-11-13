@@ -1,4 +1,4 @@
-name: Build Check
+name: CI
 
 on:
   push:
@@ -7,28 +7,8 @@ on:
     branches: [master, main]
 
 jobs:
-  frontend:
-    name: Frontend Build (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
-        working-directory: system-monitor/frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      # Falls back to `npm install` until package-lock.json is committed.
-      - run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
-      - run: npm run build
-
   backend:
-    name: Backend Check (${{ matrix.os }})
+    name: Backend tests (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -44,6 +24,21 @@ jobs:
         with:
           node-version: '20'
       - run: npm ci
-      - run: node --check server.js
       # Collects one real sample on this OS and fails if anything throws.
       - run: npm run check
+      - run: npm test
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: system-monitor/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - run: npx tsc --noEmit
+      - run: npm run build

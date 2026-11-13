@@ -1,0 +1,106 @@
+name: Release
+
+# Builds installers for every OS. Run it by pushing a tag (git tag v1.0.0 && git push --tags)
+# or manually from the Actions tab.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  desktop:
+    name: Installers (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: --mac
+          - os: windows-latest
+            target: --win
+          - os: ubuntu-latest
+            target: --linux
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Backend tests
+        working-directory: system-monitor/backend
+        run: npm ci && npm test
+      - name: Install frontend
+        working-directory: system-monitor/frontend
+        run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - name: Install desktop
+        working-directory: system-monitor/desktop
+        run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - name: Build installers
+        working-directory: system-monitor/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional code signing (see system-monitor/desktop/README.md). Skipped when empty.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
+        run: node scripts/prepare.mjs --build && npx electron-builder ${{ matrix.target }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            system-monitor/desktop/release/*.dmg
+            system-monitor/desktop/release/*.zip
+            system-monitor/desktop/release/*.exe
+            system-monitor/desktop/release/*.AppImage
+            system-monitor/desktop/release/*.deb
+          if-no-files-found: error
+
+  agent:
+    name: Linux server agent package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package agent
+        run: |
+          VERSION=$(node -p "require('./system-monitor/desktop/package.json').version")
+          mkdir -p dist/system-monitor-agent
+          cp -r system-monitor/backend/src system-monitor/backend/server.js system-monitor/backend/package.json system-monitor/backend/package-lock.json dist/system-monitor-agent/
+          cp LICENSE dist/system-monitor-agent/LICENSE.txt
+          cat > dist/system-monitor-agent/README.txt <<'TXT'
+          System Monitor agent: lets System Monitor watch this machine over the network.
+          Requires Node.js 18+.
+
+            npm ci --omit=dev
+            node server.js --agent            # prints the address + token to add in the app
+
+          Options: --port 4100  --token <your-token>  --data-dir <dir>
+          Run it as a service with systemd, pm2 or similar. Open TCP port 4100 only to trusted networks.
+          TXT
+          cd dist && tar czf "system-monitor-agent-${VERSION}.tar.gz" system-monitor-agent
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent
+          path: dist/*.tar.gz
+
+  publish:
+    name: Draft GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [desktop, agent]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: artifacts/*

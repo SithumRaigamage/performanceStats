@@ -1,60 +1,42 @@
 # System Monitor
 
-A real-time system monitor for macOS, Windows and Linux using a Node.js backend (Express + Socket.io + systeminformation) and a Next.js frontend (App Router + Tailwind + minimal shadcn-style UI components).
+| Folder | What it is |
+|---|---|
+| `backend/` | Node.js service: collects stats (systeminformation), stores history, evaluates alerts, checks the licence, serves the UI. `node server.js --agent` runs it as a headless agent. |
+| `frontend/` | Next.js dashboard, exported as static files and bundled into the desktop app. |
+| `desktop/` | Electron shell: window, tray / menu bar, native notifications, installers. |
+| `licensing/` | Scripts to create your signing key and issue licence keys. |
 
-## Project Structure
+## Modes
 
-```
-system-monitor/
-├── backend/
-│   ├── server.js
-│   └── package.json
-├── frontend/
-│   ├── package.json
-│   ├── .env.example
-│   ├── src/
-│   │   ├── app/{layout,page}.tsx, globals.css
-│   │   ├── components/ui/{card,progress,table,badge}.tsx
-│   │   ├── components/sparkline.tsx
-│   │   ├── hooks/useStats.ts
-│   │   └── lib/{types,utils}.ts
-└── README.md
-```
+| Mode | Started by | Listens on | Licence | History | Alerts |
+|---|---|---|---|---|---|
+| desktop | the Electron app | 127.0.0.1 (random port) | required | on disk | yes |
+| dev | `npm run dev` in backend | localhost:4000 | optional (`REQUIRE_LICENSE=1`) | on disk (`backend/.data`) | yes |
+| agent | `node server.js --agent`, or **Allow this computer to be monitored** in the app | 0.0.0.0:4100 | not needed | last hour in memory | no (the dashboard watching it shows the stats) |
 
-## Prerequisites
-- Node.js 18.11+
-- macOS, Windows 10/11, or Linux
+Agents require a token on every request. Share it only with people you trust, and expose port 4100
+only on trusted networks or over a VPN.
 
-## Quick Start
+## API (all JSON)
 
-### 1) Start the backend
-```bash
-cd system-monitor/backend
-npm install
-npm run start
-```
-Backend listens on `http://localhost:4000` and emits `stats` events via Socket.io.
+| Route | Notes |
+|---|---|
+| `GET /api/health` | always open |
+| `GET /api/stats` | latest sample |
+| `GET /api/history?range=15m\|1h\|6h\|24h\|7d` | or `from` / `to` in ms, `points` to downsample |
+| `GET /api/history.csv?range=…` | full-resolution CSV download |
+| `GET/PUT /api/alerts` | rules + recent alert log |
+| `GET/PUT /api/machines` | remote machines shown in the dashboard |
+| `GET/PUT /api/sharing` | turn the built-in agent on or off |
+| `GET/POST/DELETE /api/license` | licence status / activate / deactivate |
 
-### 2) Start the frontend
-```bash
-cd ../frontend
-npm install
-npm run dev
-```
-Open `http://localhost:3000` to see the dashboard.
+Socket.io events: `stats`, `alert`, `license`, `license_required`, `stats_error`.
 
-## Notes
-- CPU/Memory/Disk/Network cards update every second via Socket.io; one shared sampling loop serves all clients and pauses when nobody is connected.
-- Disk card: macOS → APFS Data volume (`/System/Volumes/Data`), Windows → system drive (`C:`), Linux → `/`; otherwise the largest real volume.
-- Windows: the idle pseudo-process is hidden from Top processes.
-- `npm run check` in `backend/` prints one sample and exits.
-- Processes table shows the Top 5 by CPU usage.
-- A red badge indicates high CPU usage (>= 80%).
+## Platform notes
 
-## Environment
-- Frontend: set `NEXT_PUBLIC_BACKEND_URL` in `frontend/.env.local` (see `.env.example`). Default `http://localhost:4000`.
-- Backend: `PORT` (4000), `INTERVAL_MS` (1000), `CORS_ORIGIN` (`*`).
-
-## Troubleshooting
-- If the frontend shows no data, ensure the backend is running and reachable.
-- Some icons/components may differ based on library versions. We used Tailwind-based UI components compatible with shadcn styling conventions.
+| OS | Main disk | Notes |
+|---|---|---|
+| macOS | APFS Data volume (`/System/Volumes/Data`), else `/` | Memory "used" matches Activity Monitor. CPU temperature isn't available on Apple Silicon. |
+| Windows | System drive (`%SystemDrive%`, usually `C:`) | Idle pseudo-process hidden. Temperatures may need admin rights. Allow the app through the firewall if you turn on remote monitoring. |
+| Linux | `/` | tmpfs/overlay/snap mounts ignored. Memory "used" excludes buffers/cache. Launch at login isn't available (use your desktop's autostart settings). |

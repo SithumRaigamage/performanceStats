@@ -1,0 +1,117 @@
+{
+  "name": "system-monitor-desktop",
+  "productName": "System Monitor",
+  "version": "1.0.0",
+  "description": "Real-time system monitor with alerts, history and multi-machine monitoring for macOS, Windows and Linux.",
+  "author": {
+    "name": "Sithum Lisitha Raigamage",
+    "email": "support@example.com"
+  },
+  "homepage": "https://sithum-raigamage.vercel.app",
+  "license": "SEE LICENSE IN LICENSE",
+  "private": true,
+  "main": "main.mjs",
+  "scripts": {
+    "prepare-app": "node scripts/prepare.mjs",
+    "start": "node scripts/prepare.mjs --build && electron .",
+    "dev": "node scripts/prepare.mjs && electron .",
+    "dist": "node scripts/prepare.mjs --build && electron-builder --publish never",
+    "dist:mac": "node scripts/prepare.mjs --build && electron-builder --mac --publish never",
+    "dist:win": "node scripts/prepare.mjs --build && electron-builder --win --publish never",
+    "dist:linux": "node scripts/prepare.mjs --build && electron-builder --linux --publish never"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3",
+    "systeminformation": "^5.30.7"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "lk.sithum.systemmonitor",
+    "productName": "System Monitor",
+    "copyright": "Copyright \u00a9 2026 Sithum Lisitha Raigamage",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.mjs",
+      "preload.cjs",
+      "assets/**",
+      "app/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/LICENSE.txt",
+        "to": "LICENSE.txt"
+      }
+    ],
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true
+    },
+    "dmg": {
+      "title": "System Monitor ${version}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "license": "build/LICENSE.txt",
+      "shortcutName": "System Monitor"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "System",
+      "synopsis": "Real-time system monitor with alerts and history",
+      "maintainer": "Sithum Lisitha Raigamage <support@example.com>"
+    }
+  }
+}

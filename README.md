@@ -1,103 +1,88 @@
-<h1 align="center">📊 Performance Stats</h1>
+<h1 align="center">📊 System Monitor</h1>
 
 <p align="center">
-  A real-time, cross-platform (macOS, Windows, Linux) system performance monitor — track CPU, memory, disk, and network stats from a beautiful web dashboard.
+  A real-time system monitor for <b>macOS, Windows and Linux</b>, with alerts, history and monitoring of other machines on your network, all in one desktop app.
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=next.js&logoColor=white" />
-  <img src="https://img.shields.io/badge/Node.js-Backend-339933?style=for-the-badge&logo=node.js&logoColor=white" />
-  <img src="https://img.shields.io/badge/macOS-Compatible-000000?style=for-the-badge&logo=apple&logoColor=white" />
-  <img src="https://img.shields.io/badge/Windows-Compatible-0078D6?style=for-the-badge&logo=windows&logoColor=white" />
-  <img src="https://img.shields.io/badge/Linux-Compatible-FCC624?style=for-the-badge&logo=linux&logoColor=black" />
-  <img src="https://img.shields.io/badge/Real--time-WebSocket-blue?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white" />
+  <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" />
+  <img src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" />
+  <img src="https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white" />
+  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white" />
 </p>
 
 ---
 
 ## ✨ Features
 
-- ⚡ **Real-time Metrics** — Live CPU, memory and disk usage
-- 🌐 **Network Monitor** — Upload/download speed tracking
-- 📈 **History** — Rolling 60-second CPU and memory charts
-- 🧮 **Top Processes** — Top 5 processes by CPU, with a red badge above 80%
-- 💻 **Cross-platform** — macOS, Windows and Linux; picks the right main disk per OS and shows host/OS info
-- 🌙 **Dark Dashboard** — Sleek dark UI optimized for extended monitoring sessions
-- 🔄 **WebSocket Updates** — Push-based streaming via Socket.io
+| | |
+|---|---|
+| ⚡ **Live dashboard** | CPU (total + per core), memory and swap, all drives, network up/down, top 5 processes |
+| 🌡️ **Hardware** | CPU temperature, GPU model / load / VRAM, battery level, health and charge cycles |
+| 🔔 **Alerts** | Desktop notifications when CPU, RAM, disk or temperature stay above your limit |
+| 📈 **History + CSV export** | Kept on disk for 1–90 days, with charts for 15 min to 7 days and one-click CSV export |
+| 🖥️ **Multiple machines** | Watch other PCs (with the app installed) or headless Linux servers (agent) from one dashboard |
+| 🔒 **Private** | Everything stays on your computers. No accounts, no cloud, no tracking |
+| 🧩 **Runs in the background** | Stays in the tray / menu bar so alerts and history keep working with the window closed |
+
+> **Note on temperatures and GPU stats:** availability depends on the OS and hardware. NVIDIA GPUs report live load;
+> on Windows, CPU temperature may need the app to run as administrator; on Apple Silicon Macs, CPU temperature
+> isn't exposed. The app shows "Not available" instead of guessing.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Project structure
 
 ```
 performanceStats/
-├── roadmap.md
+├── LICENSE                     # Commercial EULA
 └── system-monitor/
-    ├── backend/                # Node.js metrics server
-    │   ├── server.js           # Express + Socket.io + systeminformation
-    │   └── package.json
-    └── frontend/               # Next.js dashboard
-        ├── package.json
-        └── src/
-            ├── app/            # layout.tsx, page.tsx, globals.css
-            ├── components/     # ui/{card,progress,table,badge}.tsx, sparkline.tsx
-            ├── hooks/useStats.ts
-            └── lib/            # types.ts, utils.ts
+    ├── backend/                # Node.js monitoring service (also the headless agent)
+    │   ├── server.js           # CLI: dev mode, --agent, --once
+    │   ├── src/                # collector, history, alerts, settings, licence, server
+    │   └── test/               # node --test
+    ├── frontend/               # Next.js dashboard (static export)
+    ├── desktop/                # Electron app + installers (electron-builder)
+    └── licensing/              # Licence key tools (private key is gitignored)
 ```
 
 ---
 
-## 🚀 Getting Started
-
-### Backend
+## 🚀 Development
 
 ```bash
-cd system-monitor/backend
-npm install
-npm start
+# 1. backend (dev mode, no licence needed)
+cd system-monitor/backend && npm install && npm run dev      # http://localhost:4000
+
+# 2. dashboard with hot reload
+cd system-monitor/frontend && npm install && npm run dev     # http://localhost:3000
+
+# 3. the real desktop app
+cd system-monitor/desktop && npm install && npm start
 ```
 
-Backend runs at **http://localhost:4000** (Socket.io on the same port). `GET /stats` returns a JSON snapshot.
-Run `npm run check` to print one sample and exit (a quick sanity check on any OS), or `npm run dev` to auto-restart on changes.
-Env vars: `PORT` (default 4000), `INTERVAL_MS` (default 1000), `CORS_ORIGIN` (default `*`).
+Backend checks: `npm test` (unit + API tests) and `npm run check` (one real sample on this OS).
+To test the licence screen in dev mode: `REQUIRE_LICENSE=1 npm run dev`.
 
-### Frontend
+## 📦 Releasing
 
-```bash
-cd system-monitor/frontend
-npm install
-npm run dev
-```
+1. Bump `version` in `system-monitor/desktop/package.json`.
+2. `git tag v1.0.0 && git push --tags`
+3. GitHub Actions (`release.yml`) builds `.dmg`/`.zip` (macOS, Intel + Apple Silicon), `.exe` (Windows),
+   `.AppImage`/`.deb` (Linux) and the Linux agent package, then drafts a GitHub release with them.
+4. Upload the files to wherever buyers download from (your website).
 
-Dashboard runs at **http://localhost:3000**. To point it at a different backend, copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_BACKEND_URL`.
+Code signing: see `system-monitor/desktop/README.md`.
 
----
+## 💳 Selling licences
 
-## 💻 Platform notes
-
-| OS | Disk shown | Notes |
-|---|---|---|
-| macOS | APFS Data volume (`/System/Volumes/Data`), else `/` | Memory "used" matches Activity Monitor |
-| Windows | System drive (`%SystemDrive%`, usually `C:`) | "System Idle Process" is hidden from Top processes. Allow Node through Windows Firewall if prompted |
-| Linux | Root filesystem `/` | tmpfs/overlay/snap (squashfs) mounts are ignored. Memory "used" excludes buffers/cache |
-
-All commands work the same in macOS Terminal, Linux shells, PowerShell and cmd.
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 15 (App Router) |
-| Backend | Node.js + Express |
-| Real-time | Socket.io |
-| Metrics | systeminformation |
-| Styling | Tailwind CSS v4 + Geist fonts + lucide-react |
+See `system-monitor/licensing/README.md`. In short: customer pays on your site →
+`node licensing/issue-license.mjs --name "…" --email "…"` → email them the key.
 
 ---
 
 ## 📜 License
 
-MIT © [Sithum Raigamage](https://github.com/SithumRaigamage)
+Proprietary, see [LICENSE](LICENSE). © 2026 Sithum Lisitha Raigamage. Versions published before
+this licence change remain available under the MIT licence they were released with.

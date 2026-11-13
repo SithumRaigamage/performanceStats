@@ -3,7 +3,18 @@ node_modules/
 dist/
 out/
 .env
-.env.local
+.env*.local
 next-env.d.ts
 *.tsbuildinfo
 .DS_Store
+
+# Licensing secrets & customer records: NEVER commit
+system-monitor/licensing/keys/
+
+# Electron build output and copied app bundle
+system-monitor/desktop/release/
+system-monitor/desktop/app/
+
+# Local runtime data from dev/agent runs
+system-monitor/backend/.data/
+system-monitor/desktop/build/LICENSE.txt
